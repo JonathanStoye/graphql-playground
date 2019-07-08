@@ -37,8 +37,8 @@ const typeDefs = gql`
   # The "Query" type is the root of all GraphQL queries.
   # (A "Mutation" type will be covered later on.)
   type Query {
-    books: [Book]
-    authors: [Author]
+    books(title: String): [Book]
+    authors(index: Int = 0): [Author]
   }
 `;
 
@@ -46,8 +46,19 @@ const typeDefs = gql`
 // schema.  We'll retrieve books from the "books" array above.
 const resolvers = {
   Query: {
-    books: () => books,
-    authors: () => authors
+    books: (_, { title }) => {
+      if (title) {
+        const regex = new RegExp(title);
+        return books.filter(book => regex.test(book.title));
+      }
+      return books;
+    },
+    authors: (_, { index }) => {
+      if (isNaN(index)) {
+        return authors;
+      }
+      return [authors[index]];
+    }
   }
 };
 
