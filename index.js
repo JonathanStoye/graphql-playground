@@ -40,6 +40,10 @@ const typeDefs = gql`
     books(title: String): [Book]
     authors(index: Int): [Author]
   }
+
+  type Mutation {
+    createAuthor(name: String): Author
+  }
 `;
 
 // Resolvers define the technique for fetching the types in the
@@ -58,6 +62,13 @@ const resolvers = {
         return authors;
       }
       return [authors[index]];
+    }
+  },
+  Mutation: {
+    createAuthor: (_, { name }) => {
+      const newAuthor = { name };
+      authors.push(newAuthor);
+      return newAuthor;
     }
   }
 };
