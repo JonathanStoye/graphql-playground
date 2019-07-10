@@ -38,7 +38,7 @@ const typeDefs = gql`
   # (A "Mutation" type will be covered later on.)
   type Query {
     books(title: String): [Book]
-    authors(index: Int = 0): [Author]
+    authors(index: Int): [Author]
   }
 `;
 
