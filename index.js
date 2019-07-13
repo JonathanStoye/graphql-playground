@@ -1,19 +1,22 @@
 const { ApolloServer, gql } = require("apollo-server");
 
-const authors = [{ name: "J.K. Rowling" }, { name: "Michael Crichton" }];
+const authorsData = [
+  { firstname: "J.K.", lastname: "Rowling" },
+  { firstname: "Michael", lastname: "Crichton" }
+];
 
 // This is a (sample) collection of books we'll be able to query
 // the GraphQL server for.  A more complete example might fetch
 // from an existing data source like a REST API or database.
-const books = [
+const booksData = [
   {
     title: "Harry Potter and the Chamber of Secrets",
-    author: authors[0],
+    author: 0,
     chapters: ["Chapter 1", "Chapter 2", "Chapter 3"]
   },
   {
     title: "Jurassic Park",
-    author: authors[1],
+    author: 1,
     chapters: ["Intro", "The Story", "Outro"]
   }
 ];
@@ -21,14 +24,17 @@ const books = [
 // Type definitions define the "shape" of your data and specify
 // which ways the data can be fetched from the GraphQL server.
 const typeDefs = gql`
-  # Comments in GraphQL are defined with the hash (#) symbol.
-
   type Author {
+    id: ID
+    firstname: String
+    lastname: String
     name: String
+    books: [Book]
   }
 
   input AuthorInput {
-    name: String
+    firstname: String
+    lastname: String
   }
 
   # This "Book" type can be used in other type declarations.
@@ -41,8 +47,10 @@ const typeDefs = gql`
   # The "Query" type is the root of all GraphQL queries.
   # (A "Mutation" type will be covered later on.)
   type Query {
+    book(title: String!): Book
     books(title: String): [Book]
-    authors(index: Int): [Author]
+    author(index: Int!): Author
+    authors: [Author]
   }
 
   type Mutation {
@@ -50,26 +58,55 @@ const typeDefs = gql`
   }
 `;
 
+const getAuthors = () =>
+  authorsData.map((author, index) => ({
+    ...author,
+    name: `${author.firstname} ${author.lastname}`,
+    id: index
+  }));
+
+const getBooks = () =>
+  booksData.map(book => ({
+    ...book
+  }));
+
+const authors = (parent, args, context, info) => getAuthors();
+
+const author = (parent, args, context, info) =>
+  getAuthors()[args.index || parent.author];
+
+const books = (parent, args, context, info) => {
+  const aggregatedBooks = getBooks();
+  if (args.title) {
+    const regex = new RegExp(args.title);
+    return aggregatedBooks.filter(book => regex.test(book.title));
+  }
+  if (parent && typeof parent.id === "number") {
+    return aggregatedBooks.filter(book => parent.id === book.author);
+  }
+  return aggregatedBooks;
+};
+
+const book = (parent, args, context, info) =>
+  getBooks().find(book => args.title === book.title);
+
 // Resolvers define the technique for fetching the types in the
 // schema.  We'll retrieve books from the "books" array above.
 const resolvers = {
   Query: {
-    books: (_, { title }) => {
-      if (title) {
-        const regex = new RegExp(title);
-        return books.filter(book => regex.test(book.title));
-      }
-      return books;
-    },
-    authors: (_, { index }) => {
-      if (isNaN(index)) {
-        return authors;
-      }
-      return [authors[index]];
-    }
+    books,
+    book,
+    authors,
+    author
+  },
+  Author: {
+    books
+  },
+  Book: {
+    author
   },
   Mutation: {
-    createAuthor: (_, { name }) => {
+    createAuthor: (parent, { name }, context, info) => {
       const newAuthor = { name };
       authors.push(newAuthor);
       return newAuthor;
